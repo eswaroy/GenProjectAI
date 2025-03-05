@@ -1,136 +1,147 @@
-# import pandas as pd
-# import requests
-# from bs4 import BeautifulSoup
-
-# def load_project_data(csv_file):
-#     """Load project data from a CSV file."""
-#     return pd.read_csv(csv_file)
-
-# def fetch_trending_projects():
-#     """Fetch trending GitHub data science projects."""
-#     url = "https://github.com/trending/python?since=daily"
-#     response = requests.get(url)
-#     soup = BeautifulSoup(response.text, "html.parser")
-#     projects = []
-    
-#     for repo in soup.find_all("article", class_="Box-row"):
-#         name = repo.find("h2").text.strip().replace("\n", "").replace(" ", "")
-#         stars = repo.find("a", class_="Link--muted").text.strip()
-#         repo_url = "https://github.com" + repo.find("h2").find("a")["href"].strip()
-#         projects.append({"Name": name, "Stars": stars, "Repo URL": repo_url})
-    
-#     return pd.DataFrame(projects)
-
-# def get_user_preferences():
-#     """Collect user preferences for personalized recommendations."""
-#     skill_level = input("Enter your skill level (Beginner, Intermediate, Advanced): ")
-#     tech_stack = input("Enter your preferred tech stack (Python, TensorFlow, PyTorch, etc.): ")
-#     project_type = input("Enter preferred project type (ML, DL, Data Analysis, etc.): ")
-#     return skill_level.lower(), tech_stack.lower(), project_type.lower()
-
-# def recommend_projects(data, skill_level, tech_stack, project_type):
-#     """Recommend projects based on user preferences."""
-#     filtered_data = data[data['Language'].str.contains(tech_stack, case=False, na=False)]
-#     recommended_projects = filtered_data.sort_values(by='Stars', ascending=False)
-#     return recommended_projects.head(5)
-
-# def generate_roadmap(project_name):
-#     """Generate a roadmap for a given project."""
-#     roadmap = {
-#         "Beginner": ["Learn Python basics", "Understand Data Structures", "Practice small projects"],
-#         "Intermediate": ["Master Pandas & NumPy", "Learn ML algorithms", "Work on real-world datasets"],
-#         "Advanced": ["Deep Learning with TensorFlow/PyTorch", "Deploy ML models", "Optimize performance"]
-#     }
-#     return roadmap
-
-# # Load Data
-# csv_file = "github_projects.csv"  # Update with actual file path
-# data = load_project_data(csv_file)
-
-# # Fetch live trending projects
-# trending_projects = fetch_trending_projects()
-# data = pd.concat([data, trending_projects], ignore_index=True)
-
-# # Get User Input
-# skill_level, tech_stack, project_type = get_user_preferences()
-
-# # Recommend Projects
-# recommendations = recommend_projects(data, skill_level, tech_stack, project_type)
-
-# # Display Results
-# print("\nTop 5 Personalized Project Recommendations:")
-# print(recommendations[['Name', 'Description', 'Stars', 'Repo URL']])
-
-# # Generate and Display Roadmap
-# for project in recommendations['Name']:
-#     print(f"\nRoadmap for {project}:")
-#     for level, tasks in generate_roadmap(project).items():
-#         print(f"{level}:")
-#         for task in tasks:
-#             print(f"  - {task}")
 import pandas as pd
-import requests  # Using LemonFox AI API for roadmap generation
+from typing import Tuple
+import logging
+from pathlib import Path
+import requests
+import json
+import sys
 
-# LemonFox API Configuration
-LEMONFOX_API_KEY = "BcXBGJq16nqFSijYFGxp0JkEr5af74BV"  # 🔹 Replace with your actual API key
-LEMONFOX_API_URL = "https://api.lemonfox.ai/v1/chat/completions"  # 🔹 Use the correct endpoint
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-def load_project_data(csv_file):
-    """Load project data from a CSV file."""
-    return pd.read_csv(csv_file)
+# Load configuration from JSON
+CONFIG_FILE = Path('config.json')
+try:
+    with CONFIG_FILE.open('r') as f:
+        config = json.load(f)
+except FileNotFoundError:
+    logger.error(f"Configuration file '{CONFIG_FILE}' not found. Please create 'config.json' with 'api' and 'files' sections.")
+    sys.exit(1)
+except json.JSONDecodeError:
+    logger.error(f"Invalid JSON in '{CONFIG_FILE}'. Ensure it’s correctly formatted.")
+    sys.exit(1)
 
-def get_user_preferences():
-    """Collect user preferences for personalized recommendations."""
-    skill_level = input("Enter your skill level (Beginner, Intermediate, Advanced): ")
-    tech_stack = input("Enter your preferred tech stack (Python, TensorFlow, PyTorch, etc.): ")
-    project_type = input("Enter preferred project type (ML, DL, Data Analysis, etc.): ")
-    return skill_level.lower(), tech_stack.lower(), project_type.lower()
+# Extract config values
+try:
+    HF_API_KEY = config['api']['hf_api_key']
+    HF_API_URL = "https://api-inference.huggingface.co/models/gpt2"  # Using GPT-2
+    CSV_FILE = Path(config['files']['csv_file'])
+except KeyError as e:
+    logger.error(f"Config error: Missing key {e}. Ensure 'config.json' has 'api.hf_api_key' and 'files.csv_file'.")
+    sys.exit(1)
 
-def recommend_projects(data, tech_stack):
-    """Recommend projects based on user preferences."""
-    filtered_data = data[data['Language'].str.contains(tech_stack, case=False, na=False)]
-    recommended_projects = filtered_data.sort_values(by='Stars', ascending=False)
-    return recommended_projects.head(5)  # Return top 5 recommendations
+HEADERS = {"Authorization": f"Bearer {HF_API_KEY}", "Content-Type": "application/json"}
+VALID_SKILL_LEVELS = {'beginner', 'intermediate', 'advanced'}
 
-def generate_roadmap(project_name, description, tech_stack, skill_level):
-    """Generate a learning roadmap using LemonFox AI API."""
-    prompt = f"""
-    Create a step-by-step learning roadmap for the project '{project_name}'.
-    Project Description: {description}
-    Required Tech Stack: {tech_stack}
-    Skill Level: {skill_level}
-    Provide the roadmap in bullet points.
-    """
+def load_project_data(csv_file: Path) -> pd.DataFrame:
+    """Load project data from CSV with error handling."""
+    try:
+        if not csv_file.exists():
+            raise FileNotFoundError(f"{csv_file} not found.")
+        df = pd.read_csv(csv_file)
+        logger.info(f"Loaded {len(df)} projects from {csv_file}")
+        return df
+    except Exception as e:
+        logger.error(f"Error loading data: {e}")
+        return pd.DataFrame()
 
-    headers = {"Authorization": f"Bearer {LEMONFOX_API_KEY}"}
-    data = {"prompt": prompt, "max_tokens": 500}
+def validate_user_input(skill_level: str, tech_stack: str, project_type: str) -> Tuple[str, str, str]:
+    """Validate and return user preferences."""
+    skill_level = skill_level.strip().lower()
+    tech_stack = tech_stack.strip().lower()
+    project_type = project_type.strip().lower()
 
-    response = requests.post(LEMONFOX_API_URL, json=data, headers=headers)
-    if response.status_code == 200:
-        return response.json().get("text", "No roadmap generated.")
+    if not skill_level or skill_level not in VALID_SKILL_LEVELS:
+        raise ValueError(f"Skill level must be one of {VALID_SKILL_LEVELS}")
+    if not tech_stack:
+        raise ValueError("Tech stack cannot be empty")
+    if not project_type:
+        raise ValueError("Project type cannot be empty")
+
+    logger.info(f"Validated preferences: {skill_level}, {tech_stack}, {project_type}")
+    return skill_level, tech_stack, project_type
+
+def get_user_preferences() -> Tuple[str, str, str]:
+    """Collect and validate user preferences."""
+    try:
+        skill_level = input("Skill level (Beginner/Intermediate/Advanced): ")
+        tech_stack = input("Preferred tech stack (e.g., Python, TensorFlow): ")
+        project_type = input("Project type (e.g., ML, Data Analysis): ")
+        return validate_user_input(skill_level, tech_stack, project_type)
+    except ValueError as e:
+        logger.error(f"Invalid input: {e}")
+        sys.exit(1)
+
+def recommend_projects(data: pd.DataFrame, tech_stack: str, top_n: int = 5) -> pd.DataFrame:
+    """Recommend top projects based on tech stack with vectorized filtering."""
+    if data.empty:
+        logger.warning("No data available for recommendations.")
+        return pd.DataFrame()
+
+    mask = data['Language'].str.lower().str.contains(tech_stack, na=False)
+    filtered_data = data[mask].nlargest(top_n, 'Stars')
+    
+    if filtered_data.empty:
+        logger.warning(f"No projects found for tech stack: {tech_stack}")
     else:
-        return f"Error: {response.status_code} - {response.text}"
+        logger.info(f"Found {len(filtered_data)} recommendations for {tech_stack}")
+    
+    return filtered_data
 
-# Load Data
-csv_file = "github_projects.csv"  # Update with actual file path
-data = load_project_data(csv_file)
+def generate_roadmap(project_name: str, description: str, tech_stack: str, skill_level: str) -> str:
+    """Generate a roadmap using Hugging Face Inference API."""
+    prompt = (
+        f"Create a step-by-step learning roadmap for '{project_name}'.\n"
+        f"Description: {description}\n"
+        f"Tech Stack: {tech_stack}\n"
+        f"Skill Level: {skill_level}\n"
+        "Return roadmap in bullet point format."
+    )
+    
+    payload = {
+        "inputs": prompt,
+        "parameters": {"max_length": 500, "temperature": 0.7}
+    }
+    
+    try:
+        response = requests.post(HF_API_URL, json=payload, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        result = response.json()
+        roadmap = result[0].get("generated_text", "No roadmap generated.") if result else "No roadmap generated."
+        logger.info(f"Generated roadmap for {project_name}")
+        return roadmap
+    except requests.RequestException as e:
+        logger.error(f"API error for {project_name}: {e}")
+        return f"Error: Unable to generate roadmap - {str(e)}"
 
-# Get User Input
-skill_level, tech_stack, project_type = get_user_preferences()
+def display_recommendations(recommendations: pd.DataFrame, skill_level: str, tech_stack: str):
+    """Display recommendations with roadmaps in a clean format."""
+    if recommendations.empty:
+        print("\nNo recommendations available.")
+        return
 
-# Recommend Projects
-recommendations = recommend_projects(data, tech_stack)
+    print("\n🔹 Top 5 Personalized Project Recommendations:")
+    for _, row in recommendations.iterrows():
+        print(f"\n📌 Project: {row['Name']}")
+        print(f"   📌 Description: {row['Description']}")
+        print(f"   ⭐ Stars: {row['Stars']}")
+        print(f"   🔗 Repo URL: {row['Repo URL']}")
+        print("   🛠️ Roadmap:")
+        roadmap = generate_roadmap(row['Name'], row['Description'], tech_stack, skill_level)
+        print(roadmap)
 
-# Display Results
-print("\n🔹 Top 5 Personalized Project Recommendations:")
-for index, row in recommendations.iterrows():
-    print(f"\n📌 Project: {row['Name']}")
-    print(f"   📌 Description: {row['Description']}")
-    print(f"   ⭐ Stars: {row['Stars']}")
-    print(f"   🔗 Repo URL: {row['Repo URL']}")
+def main():
+    """Main execution function."""
+    data = load_project_data(CSV_FILE)
+    
+    if data.empty:
+        print("Failed to load project data. Exiting.")
+        return
+    
+    skill_level, tech_stack, project_type = get_user_preferences()
+    recommendations = recommend_projects(data, tech_stack)
+    display_recommendations(recommendations, skill_level, tech_stack)
 
-    roadmap = generate_roadmap(row['Name'], row['Description'], tech_stack, skill_level)
-    print("   🛠️ Roadmap:")
-    print(roadmap)
-
-
+if __name__ == "__main__":
+    main()
