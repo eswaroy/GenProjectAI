@@ -1,0 +1,8 @@
+{
+    "api": {
+        "hf_api_key": " your api"
+    },
+    "files": {
+        "csv_file": "github_projects.csv"
+    }
+}
