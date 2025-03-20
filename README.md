@@ -29,8 +29,8 @@ A Streamlit-based web application that recommends personalized GitHub projects b
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/[Your-GitHub-Username]/ai-project-recommender.git
-   cd ai-project-recommender
+   git clone https://github.com/eswaroy/GenProjectAI/tree/main
+   cd GenProjectAI
 
 ### Purpose
 Whether you’re a beginner looking to start your coding journey or an advanced practitioner seeking challenging projects, `genprojectai` bridges the gap between discovery and learning. It’s perfect for self-learners, students, and professionals aiming to build skills in data science, machine learning, or software development.
