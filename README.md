@@ -3,42 +3,44 @@
 
 ## About
 
-**genprojectai** is an intelligent project recommendation system designed to help developers and data science enthusiasts discover GitHub projects tailored to their skill level and technical interests. By leveraging a local dataset of GitHub repositories and integrating with the Hugging Face Inference API, this tool not only suggests relevant projects but also generates personalized step-by-step learning roadmaps to guide users in mastering them.
+# 🚀 AI Project Recommender
 
-### Key Features
-- **Personalized Recommendations**: Input your skill level (Beginner, Intermediate, Advanced), preferred tech stack (e.g., Python, TensorFlow), and project type (e.g., ML, Data Analysis) to get top project suggestions ranked by GitHub stars.
-- **Learning Roadmaps**: Automatically generates detailed learning paths for each recommended project, powered by the Hugging Face Inference API (using `distilgpt2`).
-- **Efficient and Modular**: Built with optimized Python code, featuring vectorized filtering, error handling, and a JSON-based configuration system.
-- **Local Data Utilization**: Uses a preloaded `github_projects.csv` dataset, making it lightweight and independent of real-time GitHub API calls.
+A Streamlit-based web application that recommends personalized GitHub projects based on your skill level, preferred tech stack, and project type. Powered by the Novita AI API, this tool generates dynamic learning roadmaps for each recommended project, helping you dive into open-source development with tailored guidance.
+
+---
+
+## Features
+- **Personalized Recommendations**: Enter your skill level (Beginner, Intermediate, Advanced), tech stack (e.g., Python, TensorFlow), and project type (e.g., ML, Web Dev) to get random project suggestions from a curated CSV dataset.
+- **Dynamic Results**: Recommendations vary with each run, even for identical inputs, thanks to random shuffling.
+- **Learning Roadmaps**: Automatically generated step-by-step roadmaps for each project using Novita AI's language model.
+- **Professional UI**: A sleek, modern Streamlit interface with expandable roadmaps, card-based project displays, and a responsive layout.
+- **Wide Roadmap View**: Expanded roadmap sections for better readability of detailed learning plans.
+
+---
+
+## Prerequisites
+- **Python 3.8+**: Ensure Python is installed on your system.
+- **Novita AI API Key**: Obtain an API key from [Novita AI] referral link: [https://novita.ai/referral?invited_code=M8VR9C] ,  referral code:[M8VR9C]
+- **GitHub Projects CSV**: A CSV file (`github_projects.csv`) with project details (columns: `Name`, `Description`, `Language`, `Stars`, `Repo URL`).
+
+---
+
+## Installation
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/[Your-GitHub-Username]/ai-project-recommender.git
+   cd ai-project-recommender
 
 ### Purpose
 Whether you’re a beginner looking to start your coding journey or an advanced practitioner seeking challenging projects, `genprojectai` bridges the gap between discovery and learning. It’s perfect for self-learners, students, and professionals aiming to build skills in data science, machine learning, or software development.
 
 ### How to Use
 1. Clone the repo: `git clone https://github.com/eswaroy/GenProjectAI`
-2. Set up `config.json` with your Hugging Face API key (see [Setup Instructions](#setup-instructions)).
-3. Ensure `github_projects.csv` is in the project directory.
-4. Run the script: `python recomen.py`
-5. Follow the prompts to get your recommendations and roadmaps!
-
-### Tech Stack
-- Python
-- Pandas for data processing
-- Hugging Face Inference API for roadmap generation
-- JSON for configuration
-
-### Status
-Currently in development, with plans to enhance roadmap quality, add caching for API calls, and integrate parallel processing for faster execution. Contributions are welcome—check out the [Issues](https://github.com/yourusername/genprojectai/issues) tab to get involved!
+2. Ensure `github_projects.csv` is in the project directory.
+3. Run the script: `python main.py`
+4. Follow the prompts to get your recommendations and roadmaps!
 
 ### License
 MIT License—feel free to use, modify, and distribute.
 
-## Setup Instructions
-1. **Get a Hugging Face API Key**:
-   - Sign up at [Hugging Face](https://huggingface.co/).
-   - Go to Settings > Access Tokens > Create a new token.
-   - Copy the token and add it to `config.json`.
-2. **Install Dependencies**:
-   - Run `pip install pandas requests` if not already installed.
-3. **Prepare Data**:
-   - Place `github_projects.csv` in the root directory.
